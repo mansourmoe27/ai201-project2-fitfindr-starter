@@ -133,7 +133,66 @@ def suggest_outfit(new_item: dict, wardrobe: dict) -> str:
     Before writing code, fill in the Tool 2 section of planning.md.
     """
     # Replace this with your implementation
-    return ""
+    client = _get_groq_client()
+    wardrobe_items = wardrobe.get("items", [])
+
+    item_summary = (
+        f"Item: {new_item.get('title')}\n"
+        f"Category: {new_item.get('category')}\n"
+        f"Colors: {', '.join(new_item.get('colors', []))}\n"
+        f"Style tags: {', '.join(new_item.get('style_tags', []))}\n"
+        f"Condition: {new_item.get('condition')}\n"
+        f"Price: ${new_item.get('price')}\n"
+        f"Platform: {new_item.get('platform')}"
+    )
+
+    if not wardrobe_items:
+        prompt = f"""
+Suggest 1-2 complete outfits for this thrifted item.
+
+{item_summary}
+
+The user has an empty wardrobe, so give general styling advice.
+Keep it practical, stylish, and specific.
+"""
+    else:
+        wardrobe_text = "\n".join(
+            f"- {item.get('name')} ({item.get('category')}): "
+            f"colors={', '.join(item.get('colors', []))}; "
+            f"style={', '.join(item.get('style_tags', []))}; "
+            f"notes={item.get('notes')}"
+            for item in wardrobe_items
+        )
+
+        prompt = f"""
+Suggest 1-2 complete outfits using this thrifted item and the user's wardrobe.
+
+Thrifted item:
+{item_summary}
+
+User wardrobe:
+{wardrobe_text}
+
+Use specific wardrobe item names. Explain why the pieces work together.
+Keep the answer practical and stylish.
+"""
+
+    response = client.chat.completions.create(
+        model="llama-3.3-70b-versatile",
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a helpful fashion styling assistant."
+            },
+            {
+                "role": "user",
+                "content": prompt
+            },
+        ],
+        temperature=0.7,
+    )
+
+    return response.choices[0].message.content.strip()
 
 
 # ── Tool 3: create_fit_card ───────────────────────────────────────────────────
